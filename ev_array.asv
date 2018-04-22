@@ -25,9 +25,7 @@ margin = .30; % since the equality constraints never hold
 % both waysa
 %
 % traj = feas_traj(C)
-% Create feas_traj function based on A* search / Dijkstra's
-% returns X no. of shortest time paths w/o traffic (best case)
-
+% create feas_traj function based on A* search / Dijkstra's
 % Before developing the above, use a basic problem
 traj.num_cars = 2; % scalar indicating the number of cars on the network
 traj.edges = {4,3}; % cell array indicating the numbers of edges traversed
