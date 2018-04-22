@@ -48,7 +48,7 @@ E = E + E';
 
 m_x = [E_min; -1e-10];
 M_x = [E_max; d_max];
-M_theta_var = [1 1 1]';
+M_beta_var = [1 1 1]';
 m_leg = -15; % min and max distances for edges
 M_leg = 30;
 x0 = [E_max; 0];
@@ -59,8 +59,8 @@ x = sdpvar(repmat(2,1,C),repmat(N+1,1,C));
 y = binvar(C,N);
 gam = binvar(C,N);
 
-% theta_var{car}(mode,k)
-theta_var = binvar(repmat(3,1,C),repmat(N+1,1,C));
+% beta_var{car}(mode,k)
+beta_var = binvar(repmat(3,1,C),repmat(N+1,1,C));
 delta_dist = binvar(C,N);
 
 % define the dynamical constraints
@@ -73,26 +73,23 @@ for k = 1:N
     for c = 1:C
         % define the dynamics in big-M
         constraints = [constraints,...
-            (m_x - M_x).*theta_var{c}(1,k) <= - x{c}(:,k+1) + x{c}(:,k) + [P_charge_test; 0]*Ts;
-            (m_x - M_x).*theta_var{c}(1,k) <=   x{c}(:,k+1) - x{c}(:,k) - [P_charge_test; 0]*Ts;
-            (m_x - M_x).*theta_var{c}(2,k) <= - x{c}(:,k+1) + x{c}(:,k);
-            (m_x - M_x).*theta_var{c}(2,k) <=   x{c}(:,k+1) - x{c}(:,k);
-            (m_x - M_x).*theta_var{c}(3,k) <= - x{c}(:,k+1) + x{c}(:,k) + [-P_drive_test; 5];
-            (m_x - M_x).*theta_var{c}(3,k) <=   x{c}(:,k+1) - x{c}(:,k) - [-P_drive_test; 5],...
-            theta_var{c}(1,k) + theta_var{c}(2,k) + theta_var{c}(3,k) == 2
+            (m_x - M_x).*beta_var{c}(1,k) <= - x{c}(:,k+1) + x{c}(:,k) + [P_charge_test; 0]*Ts;
+            (m_x - M_x).*beta_var{c}(1,k) <=   x{c}(:,k+1) - x{c}(:,k) - [P_charge_test; 0]*Ts;
+            (m_x - M_x).*beta_var{c}(2,k) <= - x{c}(:,k+1) + x{c}(:,k);
+            (m_x - M_x).*beta_var{c}(2,k) <=   x{c}(:,k+1) - x{c}(:,k);
+            (m_x - M_x).*beta_var{c}(3,k) <= - x{c}(:,k+1) + x{c}(:,k) + [-P_drive_test; 5];
+            (m_x - M_x).*beta_var{c}(3,k) <=   x{c}(:,k+1) - x{c}(:,k) - [-P_drive_test; 5],...
+            beta_var{c}(1,k) + beta_var{c}(2,k) + beta_var{c}(3,k) == 2
             ];
         
             
        % define the switching logic, i(t)
         constraints = [constraints,...
-            0 <= theta_var{c}(1,k) <= M_theta_var(1)*abs(2 - gam(c,k) - y(c,k));
-            0 <= theta_var{c}(2,k) <= M_theta_var(2)*abs(1 - gam(c,k) - y(c,k));
-            0 <= theta_var{c}(3,k) <= M_theta_var(3)*abs(0 - gam(c,k) - y(c,k))];
+            0 <= beta_var{c}(1,k) <= M_beta_var(1)*abs(2 - gam(c,k) - y(c,k));
+            0 <= beta_var{c}(2,k) <= M_beta_var(2)*abs(1 - gam(c,k) - y(c,k));
+            0 <= beta_var{c}(3,k) <= M_beta_var(3)*abs(0 - gam(c,k) - y(c,k))];
         
-%         for j = 1:traj.distances{c}
-%             constraints = [constraints,...
-%                 0 <= gam(c,k) <= M_gam*(x(c,k,2) - traj.distances{c}(j))
-    
+        % add box constraints (domain) for each time step
         constraints = [constraints,...
             m_x <= x{c}(:,k+1) <= M_x];
         
@@ -103,27 +100,28 @@ initial_conditions = [m_x <= x{c}(:,1) <= M_x];
 terminal_constraints = [];
 for c = 1:C
     initial_conditions = [initial_conditions,...
-        x{c}(:,1) == x0];
+        x{c}(:,1) == x0]; % add the initial condition
     k = N+1;
     terminal_constraints = [terminal_constraints, ...
-        theta_var{c}(1,k) + theta_var{c}(2,k) + theta_var{c}(3,k) == 2
-        ];
+        beta_var{c}(1,k) + beta_var{c}(2,k) + beta_var{c}(3,k) == 2
+        ]; 
 end
 constraints = [constraints, ...
     initial_conditions, terminal_constraints];
 
+% this plots the feasible sets for each state (in this case just look at
+% car 1
 figure(3); subplot(121);
 plot(constraints,x{1}(1,:),[],[],sdpsettings('relax',1));
-xlabel('Car #');
+xlabel('Initial condition');
 ylabel('Time step');
 zlabel('Energy');
 
 subplot(122);
 plot(constraints,x{1}(2,:),[],[],sdpsettings('relax',1))
-xlabel('Car #');
+xlabel('Initial condition');
 ylabel('Time step');
 zlabel('Distance');
-X = intersect(x{1}(1,:),x{1}(2,:))
 options = sdpsettings('verbose',0,'solver','gurobi');
 obj = (100-x{1}(2,N+1))^2 +(100-x{2}(2,N+1))^2;
 p = optimize(constraints,obj,options);
@@ -156,9 +154,9 @@ else
     
     figure(2); 
     for k = 1:N+1
-         if value(theta_var{1}(1,k)) == false
+         if value(beta_var{1}(1,k)) == false
              v_k = 3;
-         elseif value(theta_var{1}(2,k)) == false
+         elseif value(beta_var{1}(2,k)) == false
              v_k = 2;
          else
              v_k = 1;
