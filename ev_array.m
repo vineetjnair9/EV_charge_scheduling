@@ -13,10 +13,10 @@ E_min = 0;
 d_max = 100;
 Pmax = 45; %kW (max charging power)
 P_drive_test = .5; % kW
-P_charge_test = 5; % kW
+P_charge_test = 1; % kW
 car_capacity = 10;
-margin = .30; % since the equality constraints never hold
-
+proximity_margin = .95; % the equality constraints never hold exactly
+final_margin = .95; % final state won't be exactly the end point due to discrete dynamics
 %% Run the feas_traj function to get the sequences (ordered-sets) of edges
 % % to traverse
 % % Initial nodes (nu)
@@ -30,7 +30,7 @@ traj.num_cars = 2; % scalar indicating the number of cars on the network
 traj.edges = {4,3}; % cell array indicating the numbers of edges traversed
 traj.max_edges = 4; 
 traj.sequence = {[1 3 4 5],[2 4 5]}; % cell array of the node sequence
-traj.distances = {[25 10 30], [15 30]}; % cell array of the edge weights
+traj.distances = {[0 25 10 30], [0 15 30]}; % cell array of the edge weights
 traj.cum_distances = {[0 25 35 65], [0 15 45]};
 n_nodes = 5;
 A = [0 1 1 0 0;
@@ -89,7 +89,19 @@ for k = 1:N
             0 <= beta_var{c}(2,k) <= M_beta_var(2)*abs(1 - gam(c,k) - y(c,k));
             0 <= beta_var{c}(3,k) <= M_beta_var(3)*abs(0 - gam(c,k) - y(c,k))];
         
-        % add box constraints (domain) for each time step
+        % add the constraints on gamma (at a node?)
+        for j = 2:traj.distances{c}-1
+            check_location =  (2-proximity_margin)*traj.distances{c}(j-1)...
+                                <= x{c}(2,k) <= ...
+                                proximity_margin*traj.distances{c}(j);
+            constraints = [constraints,...
+                0 <= gam(c,k) <= M_gam*(1-check_location)
+                ];
+        end
+        
+        
+        
+        % time invariant box constraints on the state
         constraints = [constraints,...
             m_x <= x{c}(:,k+1) <= M_x];
         
@@ -100,31 +112,29 @@ initial_conditions = [m_x <= x{c}(:,1) <= M_x];
 terminal_constraints = [];
 for c = 1:C
     initial_conditions = [initial_conditions,...
-        x{c}(:,1) == x0]; % add the initial condition
+        x{c}(:,1) == x0];
     k = N+1;
     terminal_constraints = [terminal_constraints, ...
-        beta_var{c}(1,k) + beta_var{c}(2,k) + beta_var{c}(3,k) == 2
-        ]; 
+        beta_var{c}(1,k) + beta_var{c}(2,k) + beta_var{c}(3,k) == 2,...
+        x{c}(2,N+1) >= final_margin*traj.cum_distances{c}(end)];
 end
 constraints = [constraints, ...
     initial_conditions, terminal_constraints];
 
-% this plots the feasible sets for each state (in this case just look at
-% car 1
 figure(3); subplot(121);
 plot(constraints,x{1}(1,:),[],[],sdpsettings('relax',1));
-xlabel('Initial condition');
+xlabel('Car #');
 ylabel('Time step');
 zlabel('Energy');
 
 subplot(122);
 plot(constraints,x{1}(2,:),[],[],sdpsettings('relax',1))
-xlabel('Initial condition');
+xlabel('Car #');
 ylabel('Time step');
 zlabel('Distance');
 options = sdpsettings('verbose',0,'solver','gurobi');
 obj = (100-x{1}(2,N+1))^2 +(100-x{2}(2,N+1))^2;
-p = optimize(constraints,obj,options);
+p = optimize(constraints,[],options);
 %% Show the results
 if p.problem == 1
     p
