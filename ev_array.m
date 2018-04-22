@@ -12,8 +12,8 @@ E_max = 15; %kWh (battery capacity)
 E_min = 0;
 d_max = 100;
 Pmax = 45; %kW (max charging power)
-P_drive_test = .5; % kW
-P_charge_test = 5; % kW
+P_drive_test = .5; % kW (driving power discharge) 
+P_charge_test = 5; % kW (charging rate)
 car_capacity = 10;
 margin = .30; % since the equality constraints never hold
 
@@ -24,7 +24,7 @@ margin = .30; % since the equality constraints never hold
 % % Define connected graph G = (V,E,A) 
 % 
 % traj = feas_traj(C
-% 
+% create feas_traj function based on A* search / Dijkstra's
 % Before developing the above, use a basic problem
 traj.num_cars = 2; % scalar indicating the number of cars on the network
 traj.edges = {4,3}; % cell array indicating the numbers of edges traversed
@@ -44,7 +44,6 @@ E = [0  30 25 0  0;
      0  0  0  0  30;
      0  0  0  0  0];
 E = E + E';
-
 
 m_x = [E_min; -1e-10];
 M_x = [E_max; d_max];
