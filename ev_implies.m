@@ -44,7 +44,7 @@ m_edge = min(min(E(E>0)));
 origin.edge = m_edge*[1 1]; % Leave as is (initialization condition)
 origin.node = [2 3]; % The origin node's index
 dest.edge = [1 1]; % Will be the radius that we must arrive within
-dest.node = [5 5]; % The index of the node to arrive at
+dest.node = [4 4]; % The index of the node to arrive at
 C = length(origin.edge); % number of cars
 n_nodes = 5;
 x0 = [E_max; 0];
@@ -134,13 +134,7 @@ for k = 1:N
                     [current_edge(c,k+1) == current_edge(c,k),...
                     xi{c}(:,k+1) == xi{c}(:,k)]),...
                     ];  
-                
-         % set the edge to a new value
-         
-%         constraints = [constraints,...
-%             current_edge(c,5:10) == 12,...
-%             current_edge(c,11:20) == 11,...
-%             current_edge(c,21:30) == 10];
+
         
         % create the switching conditions for edges
         for i = 1:n_nodes
@@ -194,11 +188,11 @@ for c = 1:C
         eps_var(c,1) == origin.edge(c),...
         ];
 
-%     target = [(dest.node(c)-1)*n_nodes+1:dest.node(c)*n_nodes];
-%     terminal_constraints = [terminal_constraints,...
-%         eps_var(c,end) <= dest.edge(c),...
-%         sum(xi{c}(target,end)) == 1
-%         ];
+    target = [(dest.node(c)-1)*n_nodes+1:dest.node(c)*n_nodes];
+    terminal_constraints = [terminal_constraints,...
+        
+        sum(xi{c}(target,end)) == 1
+        ];
 %     terminal_constraints = [terminal_constraints,...
 %         x{1}(2,:) >= 15];
 end
@@ -214,7 +208,7 @@ constraints = [constraints,...
 % plot(constraints,x{1}(2,:),[],[],sdpsettings('relax',1))
 
 options = sdpsettings('verbose',0,'solver','gurobi');
-obj = (1000-x{1}(2,N+1))^2 +(1000-x{2}(2,N+1))^2;
+obj = (0-x{1}(2,N+1))^2 +(0-x{2}(2,N+1))^2;
 disp('starting problem');
 p = optimize(constraints,obj,options);
 %% Show the results
@@ -282,7 +276,7 @@ else
     gamma__y = [value(gam(1,:))',value(y(1,:))']
     
     disp('Edge value | Epsilon counter value | Gamma |  Y')
-    car = 1;
+    car = 2;
     edge__eps__gam__y = round([value(current_edge(car,:))',value(eps_var(car,:))',...
         value(gam(car,:))',value(y(car,:))'])
 end
