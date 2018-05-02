@@ -1,0 +1,6 @@
+% run ev_array_full first
+F = [hull(x{c}(:,k+1) == x{c}(:,k) + [P_charge_test; 0]*Ts,...
+    x{c}(:,k+1) == x{c}(:,k),...
+    x{c}(:,k+1) == x{c}(:,k) + [-P_drive_test; 5]*Ts)];
+figure(1);
+plot(states,x{1}(1,1:4),[],[],sdpsettings('relax',1))
