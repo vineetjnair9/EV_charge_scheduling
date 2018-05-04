@@ -165,7 +165,7 @@ for k = 1:N
             m_edge <= current_edge(c,k+1) <= M_edge,...
             0 <= eps_var(c,k+1) <= 2*M_edge,... % looser upper bound to allow for overstep
             ];
-        
+
     end
 end
 
